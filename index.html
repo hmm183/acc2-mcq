@@ -438,7 +438,7 @@
             // Optional: Shuffle the array for a mix
             currentQuizQuestions = [...allQuestions].sort(() => Math.random() - 0.5);
         } else {
-            currentQuizQuestions = allQuestions.filter(q => String(q.Topic).trim() === selectedTopic);
+            currentQuizQuestions = allQuestions.filter(q => String(q.Topic).trim() === selectedTopic).sort(() => Math.random() - 0.5);
         }
 
         if(currentQuizQuestions.length === 0) return;
