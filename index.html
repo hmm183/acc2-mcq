@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,7 +46,7 @@
             max-width: 800px;
             background: var(--card-bg);
             border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
             padding: 2rem;
             transition: all 0.3s ease;
         }
@@ -251,40 +252,52 @@
                 padding: 0;
                 align-items: flex-start;
             }
+
             .container {
                 border-radius: 0;
                 min-height: 100vh;
                 padding: 1.5rem 1.25rem;
             }
+
             #home-screen h1 {
                 font-size: 1.75rem;
             }
+
             select {
-                font-size: 16px; /* Explicit 16px prevents iOS zoom on focus */
-                padding: 0.85rem 1rem; /* Slightly taller tap target for mobile */
+                font-size: 16px;
+                /* Explicit 16px prevents iOS zoom on focus */
+                padding: 0.85rem 1rem;
+                /* Slightly taller tap target for mobile */
             }
+
             #home-screen button {
                 width: 100%;
             }
+
             .quiz-header {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 0.75rem;
             }
+
             .question-text {
                 font-size: 1.1rem;
                 margin-bottom: 1rem;
             }
+
             .option {
                 padding: 0.85rem;
                 font-size: 0.95rem;
             }
+
             .option .option-letter {
                 margin-right: 0.75rem;
             }
+
             .quiz-footer {
                 padding-top: 1rem;
             }
+
             .quiz-footer button {
                 padding: 0.6rem 1rem;
                 font-size: 0.9rem;
@@ -292,276 +305,307 @@
         }
     </style>
 </head>
+
 <body>
 
-<div class="container">
-    <div id="home-screen">
-        <h1>Quiz Portal</h1>
-        <p>Test your knowledge across various topics</p>
-        
-        <div class="form-group">
-            <label for="topic-select">Select a Topic</label>
-            <select id="topic-select" disabled>
-                <option value="">Loading topics...</option>
-            </select>
-            <div id="loading-msg">Fetching data from CSV files...</div>
+    <div class="container">
+        <div id="home-screen">
+            <h1>Quiz Portal</h1>
+            <p>Test your knowledge across various topics</p>
+
+            <div class="form-group">
+                <label for="topic-select">Select a Topic</label>
+                <select id="topic-select" disabled>
+                    <option value="">Loading topics...</option>
+                </select>
+                <div id="loading-msg">Fetching data from CSV files...</div>
+            </div>
+
+            <button id="start-btn" disabled>Start Quiz</button>
         </div>
 
-        <button id="start-btn" disabled>Start Quiz</button>
+        <div id="quiz-screen" class="hidden">
+            <div class="progress-bar-container">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+
+            <div class="quiz-header">
+                <span id="q-difficulty" class="difficulty-badge">Medium</span>
+                <span id="q-topic" class="topic-badge">Topic Name</span>
+            </div>
+
+            <div id="q-text" class="question-text">Question text goes here?</div>
+
+            <div class="options-grid">
+                <div class="option" data-opt="A">
+                    <span class="option-letter">A</span> <span class="option-text" id="opt-a-text">Option A</span>
+                </div>
+                <div class="option" data-opt="B">
+                    <span class="option-letter">B</span> <span class="option-text" id="opt-b-text">Option B</span>
+                </div>
+                <div class="option" data-opt="C">
+                    <span class="option-letter">C</span> <span class="option-text" id="opt-c-text">Option C</span>
+                </div>
+                <div class="option" data-opt="D">
+                    <span class="option-letter">D</span> <span class="option-text" id="opt-d-text">Option D</span>
+                </div>
+            </div>
+
+            <div class="quiz-footer">
+                <button id="prev-btn" class="btn-outline">Previous</button>
+                <span id="q-counter" style="color: var(--text-muted); font-weight: 500;">1 / 10</span>
+                <button id="next-btn">Next</button>
+            </div>
+        </div>
     </div>
 
-    <div id="quiz-screen" class="hidden">
-        <div class="progress-bar-container">
-            <div id="progress-bar" class="progress-bar"></div>
-        </div>
-        
-        <div class="quiz-header">
-            <span id="q-difficulty" class="difficulty-badge">Medium</span>
-            <span id="q-topic" class="topic-badge">Topic Name</span>
-        </div>
+    <script>
+        // Configuration
+        const filesToLoad = [
+            'FAT.xlsx',
+            'CAT-1.xlsx',
+            'CAT-2.xlsx'
+        ];
 
-        <div id="q-text" class="question-text">Question text goes here?</div>
+        // State Variables
+        let allQuestions = [];
+        let currentQuizQuestions = [];
+        let currentIndex = 0;
 
-        <div class="options-grid">
-            <div class="option" data-opt="A">
-                <span class="option-letter">A</span> <span class="option-text" id="opt-a-text">Option A</span>
-            </div>
-            <div class="option" data-opt="B">
-                <span class="option-letter">B</span> <span class="option-text" id="opt-b-text">Option B</span>
-            </div>
-            <div class="option" data-opt="C">
-                <span class="option-letter">C</span> <span class="option-text" id="opt-c-text">Option C</span>
-            </div>
-            <div class="option" data-opt="D">
-                <span class="option-letter">D</span> <span class="option-text" id="opt-d-text">Option D</span>
-            </div>
-        </div>
+        // Store user answers. Structure: { questionIndex: 'A', ... }
+        let userAnswers = {};
 
-        <div class="quiz-footer">
-            <button id="prev-btn" class="btn-outline">Previous</button>
-            <span id="q-counter" style="color: var(--text-muted); font-weight: 500;">1 / 10</span>
-            <button id="next-btn">Next</button>
-        </div>
-    </div>
-</div>
+        // DOM Elements
+        const homeScreen = document.getElementById('home-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const topicSelect = document.getElementById('topic-select');
+        const startBtn = document.getElementById('start-btn');
+        const loadingMsg = document.getElementById('loading-msg');
 
-<script>
-    // Configuration
-    const filesToLoad = [
-        'FAT.xlsx',
-        'CAT-1.xlsx',
-        'CAT-2.xlsx'
-    ];
+        const qTopic = document.getElementById('q-topic');
+        const qDifficulty = document.getElementById('q-difficulty');
+        const qText = document.getElementById('q-text');
+        const qCounter = document.getElementById('q-counter');
+        const progressBar = document.getElementById('progress-bar');
+        const options = document.querySelectorAll('.option');
 
-    // State Variables
-    let allQuestions = [];
-    let currentQuizQuestions = [];
-    let currentIndex = 0;
-    
-    // Store user answers. Structure: { questionIndex: 'A', ... }
-    let userAnswers = {}; 
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
 
-    // DOM Elements
-    const homeScreen = document.getElementById('home-screen');
-    const quizScreen = document.getElementById('quiz-screen');
-    const topicSelect = document.getElementById('topic-select');
-    const startBtn = document.getElementById('start-btn');
-    const loadingMsg = document.getElementById('loading-msg');
+        // Initialize App
+        async function init() {
+            try {
+                const fetchPromises = filesToLoad.map(file => fetch(file).then(res => {
+                    if (!res.ok) throw new Error(`Could not load ${file}`);
+                    return res.arrayBuffer();
+                }));
 
-    const qTopic = document.getElementById('q-topic');
-    const qDifficulty = document.getElementById('q-difficulty');
-    const qText = document.getElementById('q-text');
-    const qCounter = document.getElementById('q-counter');
-    const progressBar = document.getElementById('progress-bar');
-    const options = document.querySelectorAll('.option');
-    
-    const prevBtn = document.getElementById('prev-btn');
-    const nextBtn = document.getElementById('next-btn');
+                const arrayBuffers = await Promise.all(fetchPromises);
 
-    // Initialize App
-    async function init() {
-        try {
-            const fetchPromises = filesToLoad.map(file => fetch(file).then(res => {
-                if(!res.ok) throw new Error(`Could not load ${file}`);
-                return res.arrayBuffer();
-            }));
+                arrayBuffers.forEach(buffer => {
+                    const workbook = XLSX.read(buffer, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const results = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
-            const arrayBuffers = await Promise.all(fetchPromises);
-            
-            arrayBuffers.forEach(buffer => {
-                const workbook = XLSX.read(buffer, {type: 'array'});
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const results = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
-                
-                // Filter out any rows that don't have a valid question
-                const validRows = results.filter(row => row.Question && String(row.Question).trim() !== "");
-                allQuestions = allQuestions.concat(validRows);
+                    // Filter out any rows that don't have a valid question
+                    const validRows = results.filter(row => row.Question && String(row.Question).trim() !== "");
+                    allQuestions = allQuestions.concat(validRows);
+                });
+
+                populateTopics();
+            } catch (error) {
+                loadingMsg.style.color = "var(--wrong-border)";
+                loadingMsg.innerText = "Error loading files. Ensure you are running a local server and files exist.";
+                console.error(error);
+            }
+        }
+
+        // Extract unique topics and populate dropdown
+        function populateTopics() {
+            const topics = new Set();
+            allQuestions.forEach(q => {
+                if (q.Topic && String(q.Topic).trim() !== "") {
+                    topics.add(String(q.Topic).trim());
+                }
             });
 
-            populateTopics();
-        } catch (error) {
-            loadingMsg.style.color = "var(--wrong-border)";
-            loadingMsg.innerText = "Error loading files. Ensure you are running a local server and files exist.";
-            console.error(error);
-        }
-    }
+            topicSelect.innerHTML = '<option value="All">Mix of All Topics</option>';
+            Array.from(topics).sort().forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic;
+                option.textContent = topic;
+                topicSelect.appendChild(option);
+            });
 
-    // Extract unique topics and populate dropdown
-    function populateTopics() {
-        const topics = new Set();
-        allQuestions.forEach(q => {
-            if(q.Topic && String(q.Topic).trim() !== "") {
-                topics.add(String(q.Topic).trim());
+            topicSelect.disabled = false;
+            startBtn.disabled = false;
+            loadingMsg.innerText = `${allQuestions.length} questions loaded successfully!`;
+            loadingMsg.style.color = "var(--correct-border)";
+        }
+
+        // Start the Quiz
+        startBtn.addEventListener('click', () => {
+            const selectedTopic = topicSelect.value;
+
+            if (selectedTopic === "All") {
+                // Optional: Shuffle the array for a mix
+                currentQuizQuestions = [...allQuestions].sort(() => Math.random() - 0.5);
+            } else {
+                currentQuizQuestions = allQuestions.filter(q => String(q.Topic).trim() === selectedTopic).sort(() => Math.random() - 0.5);
+            }
+
+            if (currentQuizQuestions.length === 0) return;
+
+            // Reset state
+            currentIndex = 0;
+            userAnswers = {};
+
+            homeScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+
+            loadQuestion();
+        });
+
+        // Render Question
+        function loadQuestion() {
+            const q = currentQuizQuestions[currentIndex];
+
+            qTopic.textContent = q.Topic;
+            qDifficulty.textContent = q.Difficulty;
+
+            // Dynamic badge color based on difficulty
+            const diffLower = (q.Difficulty || "").toLowerCase();
+            if (diffLower.includes('easy')) qDifficulty.style.color = '#065F46', qDifficulty.style.backgroundColor = '#D1FAE5';
+            else if (diffLower.includes('hard')) qDifficulty.style.color = '#991B1B', qDifficulty.style.backgroundColor = '#FEE2E2';
+            else qDifficulty.style.color = '#92400E', qDifficulty.style.backgroundColor = '#FEF3C7'; // Medium default
+
+            qText.textContent = q.Question;
+            document.getElementById('opt-a-text').textContent = q['Option A'];
+            document.getElementById('opt-b-text').textContent = q['Option B'];
+            document.getElementById('opt-c-text').textContent = q['Option C'];
+            document.getElementById('opt-d-text').textContent = q['Option D'];
+
+            qCounter.textContent = `${currentIndex + 1} / ${currentQuizQuestions.length}`;
+            progressBar.style.width = `${((currentIndex + 1) / currentQuizQuestions.length) * 100}%`;
+
+            prevBtn.disabled = currentIndex === 0;
+
+            if (currentIndex === currentQuizQuestions.length - 1) {
+                nextBtn.textContent = "Finish";
+            } else {
+                nextBtn.textContent = "Next";
+            }
+
+            resetOptionsUI();
+
+            // Restore state if user already answered this question
+            if (userAnswers[currentIndex]) {
+                applyAnswerStyles(userAnswers[currentIndex], String(q['Correct Answer']).trim().toUpperCase());
+            }
+        }
+
+        // Handle Option Click
+        options.forEach(option => {
+            option.addEventListener('click', function () {
+                // Prevent clicking if already answered
+                if (userAnswers[currentIndex]) return;
+
+                const selectedOpt = this.getAttribute('data-opt');
+                const correctOpt = String(currentQuizQuestions[currentIndex]['Correct Answer']).trim().toUpperCase();
+
+                // Save answer
+                userAnswers[currentIndex] = selectedOpt;
+
+                applyAnswerStyles(selectedOpt, correctOpt);
+            });
+        });
+
+        // Apply Green/Red styling based on correctness
+        function applyAnswerStyles(selectedOpt, correctOpt) {
+            options.forEach(opt => {
+                opt.classList.add('disabled'); // Disable all hover effects
+
+                const currentOptLetter = opt.getAttribute('data-opt');
+
+                if (currentOptLetter === correctOpt) {
+                    // Always highlight the correct answer in green
+                    opt.classList.add('correct');
+                } else if (currentOptLetter === selectedOpt && selectedOpt !== correctOpt) {
+                    // If the user selected this and it's wrong, highlight red
+                    opt.classList.add('wrong');
+                }
+            });
+        }
+
+        // Reset UI for next question
+        function resetOptionsUI() {
+            options.forEach(opt => {
+                opt.classList.remove('correct', 'wrong', 'disabled');
+            });
+        }
+
+        // Navigation
+        nextBtn.addEventListener('click', () => {
+            if (currentIndex < currentQuizQuestions.length - 1) {
+                currentIndex++;
+                loadQuestion();
+            } else {
+                // Finish Quiz logic
+                const score = Object.keys(userAnswers).reduce((total, index) => {
+                    const userAns = userAnswers[index];
+                    const correctAns = String(currentQuizQuestions[index]['Correct Answer']).trim().toUpperCase();
+                    return total + (userAns === correctAns ? 1 : 0);
+                }, 0);
+
+                alert(`Quiz Completed!\nYour Score: ${score} out of ${currentQuizQuestions.length}`);
+
+                // Return to Home
+                quizScreen.classList.add('hidden');
+                homeScreen.classList.remove('hidden');
             }
         });
 
-        topicSelect.innerHTML = '<option value="All">Mix of All Topics</option>';
-        Array.from(topics).sort().forEach(topic => {
-            const option = document.createElement('option');
-            option.value = topic;
-            option.textContent = topic;
-            topicSelect.appendChild(option);
-        });
-
-        topicSelect.disabled = false;
-        startBtn.disabled = false;
-        loadingMsg.innerText = `${allQuestions.length} questions loaded successfully!`;
-        loadingMsg.style.color = "var(--correct-border)";
-    }
-
-    // Start the Quiz
-    startBtn.addEventListener('click', () => {
-        const selectedTopic = topicSelect.value;
-        
-        if (selectedTopic === "All") {
-            // Optional: Shuffle the array for a mix
-            currentQuizQuestions = [...allQuestions].sort(() => Math.random() - 0.5);
-        } else {
-            currentQuizQuestions = allQuestions.filter(q => String(q.Topic).trim() === selectedTopic).sort(() => Math.random() - 0.5);
-        }
-
-        if(currentQuizQuestions.length === 0) return;
-
-        // Reset state
-        currentIndex = 0;
-        userAnswers = {};
-        
-        homeScreen.classList.add('hidden');
-        quizScreen.classList.remove('hidden');
-        
-        loadQuestion();
-    });
-
-    // Render Question
-    function loadQuestion() {
-        const q = currentQuizQuestions[currentIndex];
-        
-        qTopic.textContent = q.Topic;
-        qDifficulty.textContent = q.Difficulty;
-        
-        // Dynamic badge color based on difficulty
-        const diffLower = (q.Difficulty || "").toLowerCase();
-        if(diffLower.includes('easy')) qDifficulty.style.color = '#065F46', qDifficulty.style.backgroundColor = '#D1FAE5';
-        else if(diffLower.includes('hard')) qDifficulty.style.color = '#991B1B', qDifficulty.style.backgroundColor = '#FEE2E2';
-        else qDifficulty.style.color = '#92400E', qDifficulty.style.backgroundColor = '#FEF3C7'; // Medium default
-
-        qText.textContent = q.Question;
-        document.getElementById('opt-a-text').textContent = q['Option A'];
-        document.getElementById('opt-b-text').textContent = q['Option B'];
-        document.getElementById('opt-c-text').textContent = q['Option C'];
-        document.getElementById('opt-d-text').textContent = q['Option D'];
-
-        qCounter.textContent = `${currentIndex + 1} / ${currentQuizQuestions.length}`;
-        progressBar.style.width = `${((currentIndex + 1) / currentQuizQuestions.length) * 100}%`;
-
-        prevBtn.disabled = currentIndex === 0;
-        
-        if (currentIndex === currentQuizQuestions.length - 1) {
-            nextBtn.textContent = "Finish";
-        } else {
-            nextBtn.textContent = "Next";
-        }
-
-        resetOptionsUI();
-
-        // Restore state if user already answered this question
-        if (userAnswers[currentIndex]) {
-            applyAnswerStyles(userAnswers[currentIndex], String(q['Correct Answer']).trim().toUpperCase());
-        }
-    }
-
-    // Handle Option Click
-    options.forEach(option => {
-        option.addEventListener('click', function() {
-            // Prevent clicking if already answered
-            if (userAnswers[currentIndex]) return;
-
-            const selectedOpt = this.getAttribute('data-opt');
-            const correctOpt = String(currentQuizQuestions[currentIndex]['Correct Answer']).trim().toUpperCase();
-            
-            // Save answer
-            userAnswers[currentIndex] = selectedOpt;
-
-            applyAnswerStyles(selectedOpt, correctOpt);
-        });
-    });
-
-    // Apply Green/Red styling based on correctness
-    function applyAnswerStyles(selectedOpt, correctOpt) {
-        options.forEach(opt => {
-            opt.classList.add('disabled'); // Disable all hover effects
-            
-            const currentOptLetter = opt.getAttribute('data-opt');
-            
-            if (currentOptLetter === correctOpt) {
-                // Always highlight the correct answer in green
-                opt.classList.add('correct');
-            } else if (currentOptLetter === selectedOpt && selectedOpt !== correctOpt) {
-                // If the user selected this and it's wrong, highlight red
-                opt.classList.add('wrong');
+        prevBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                loadQuestion();
             }
         });
-    }
 
-    // Reset UI for next question
-    function resetOptionsUI() {
-        options.forEach(opt => {
-            opt.classList.remove('correct', 'wrong', 'disabled');
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Only active when quiz screen is visible
+            if (quizScreen.classList.contains('hidden')) return;
+
+            if (e.key === 'ArrowRight') {
+                nextBtn.click();
+            }
+            else if (e.key === 'Enter') {
+                nextBtn.click();
+            }
+            else if (e.key === 'ArrowLeft') {
+                prevBtn.click();
+            }
+            else if (e.key.toLowerCase() === 'a') {
+                const opt = document.querySelector('.option[data-opt="A"]');
+                if (opt) opt.click();
+            } else if (e.key.toLowerCase() === 's') {
+                const opt = document.querySelector('.option[data-opt="B"]');
+                if (opt) opt.click();
+            } else if (e.key.toLowerCase() === 'd') {
+                const opt = document.querySelector('.option[data-opt="C"]');
+                if (opt) opt.click();
+            } else if (e.key.toLowerCase() === 'f') {
+                const opt = document.querySelector('.option[data-opt="D"]');
+                if (opt) opt.click();
+            }
         });
-    }
 
-    // Navigation
-    nextBtn.addEventListener('click', () => {
-        if (currentIndex < currentQuizQuestions.length - 1) {
-            currentIndex++;
-            loadQuestion();
-        } else {
-            // Finish Quiz logic
-            const score = Object.keys(userAnswers).reduce((total, index) => {
-                const userAns = userAnswers[index];
-                const correctAns = String(currentQuizQuestions[index]['Correct Answer']).trim().toUpperCase();
-                return total + (userAns === correctAns ? 1 : 0);
-            }, 0);
-            
-            alert(`Quiz Completed!\nYour Score: ${score} out of ${currentQuizQuestions.length}`);
-            
-            // Return to Home
-            quizScreen.classList.add('hidden');
-            homeScreen.classList.remove('hidden');
-        }
-    });
-
-    prevBtn.addEventListener('click', () => {
-        if (currentIndex > 0) {
-            currentIndex--;
-            loadQuestion();
-        }
-    });
-
-    // Run initialization on load
-    window.addEventListener('DOMContentLoaded', init);
-</script>
+        // Run initialization on load
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
 
 </body>
+
 </html>
